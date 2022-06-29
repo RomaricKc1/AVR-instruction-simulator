@@ -69,7 +69,7 @@ impl Instruction{
                 });
 
                 println!("################################\nExecution mode: Register Direct");
-                println!("Intrutcion execution\nOp Code \t\t reg src\t\t reg dest\n---------------------------------------------------------------");
+                println!("Intruction execution\nOp Code \t\t reg src\t\t reg dest\n---------------------------------------------------------------");
                 
                 // actual call to execute
                 let mut rd = Register { name: reg_dest.name.to_string(), value: reg_dest.value };
