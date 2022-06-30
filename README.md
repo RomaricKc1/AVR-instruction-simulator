@@ -3,7 +3,7 @@ Starting with Rust programming, simple UAL
 
 ### RUN
 ```bash
-cargo run Register_Direct r1 3 r2 4 OR
+cargo run Register_Direct r1 0x03 r2 0x04 OR
 ```
 ### std output
 ```Rust
