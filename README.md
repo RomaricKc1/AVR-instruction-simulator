@@ -36,7 +36,7 @@ Starting with Rust programming, simple UAL
 | add | rd, rs | 0001 | rd rd rd rd   rs rs rs rs 0000 | add rs to rd and return rd |
 | sub | rd ,rs | 0010 | rd rd rd rd   rs rs rs rs 0000 | substract rs to rd and return rd |
 | mov | rd, rs | 0011 | rd rd rd rd   rs rs rs rs 0000 | move rs to rd and return rd |
-| jmp | addr | 0100 | adr adr adr adr adr adr adr adr 0000 0000| jump to address addr |
+| jmp | addr | 0100 | adr adr adr adr adr adr adr adr 0000| jump to address addr |
 | push | sp? | 0101 | 0000 0000 0000 | push the stack pointer |
 | pop | sp? | 0110 | 0000 0000 0000 | op the stack pointer |
 | jmp | -- | 0111 | 0000 0000 0000 | -- |
@@ -45,7 +45,7 @@ Starting with Rust programming, simple UAL
 ## Example of Instruction execution
 r2 is register 0011, r3 is register 0100, remaining unused
 ```
-machine code : 0011 0011 0100 0000 0000
+machine code : 0011 0011 0100 0000
 
 same as 
 ASM          : MOV r2, r3 ;move content of r3 into r2
