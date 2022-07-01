@@ -1,5 +1,25 @@
 # Whole Processor simulator, with ASM program file to execute.
-### On-going developement
+### On-going development(it's my First Rust program so I --for sure-- have made mistakes.
+
+### TODOS
+- Read a machine code as shown in the test section
+
+```assambly
+
+    00000000 <app_name>:
+        0:       1120           add      r0,     r1
+        1:       3420           mov      r3,     r1
+        2:       1120           add      r0,     r1
+        3:       1120           add      r0,     r1
+        ...           ...           ...         ...
+        
+        ff:      1120           add      r0,     r1
+```
+- Remove old run mode
+- Add instruction, urgent (Load) to read data from memory
+- Write an example program in machine code
+- Add a dump mode to print all the memory and register contents
+
 
 # instruction-simulator
 Starting with Rust programming, simple UAL
@@ -36,11 +56,11 @@ Starting with Rust programming, simple UAL
 | add | rd, rs | 0001 | rd rd rd rd   rs rs rs rs 0000 | add rs to rd and return rd |
 | sub | rd ,rs | 0010 | rd rd rd rd   rs rs rs rs 0000 | substract rs to rd and return rd |
 | mov | rd, rs | 0011 | rd rd rd rd   rs rs rs rs 0000 | move rs to rd and return rd |
-| jmp | addr | 0100 | adr adr adr adr adr adr adr adr 0000| jump to address addr |
-| push | sp? | 0101 | 0000 0000 0000 | push the stack pointer |
-| pop | sp? | 0110 | 0000 0000 0000 | op the stack pointer |
-| jmp | -- | 0111 | 0000 0000 0000 | -- |
-| jmp | -- | 1000 | 0000 0000 0000 | -- |
+| or | rd, rs | 0100 | rd rd rd rd   rs rs rs rs 0000 | logical or, rs to rd and return rd |
+| push | sp? | 0101 | 0000 0000 0000 | push to the stack pointer |
+| pop | sp? | 0110 | 0000 0000 0000 | pop the stack pointer |
+| jmp | addr | 0111 | adr adr adr adr adr adr adr adr 0000| jump to address addr |
+| -- | -- | 1000 | 0000 0000 0000 | -- |
 
 ## Example of Instruction execution
 r2 is register 0011, r3 is register 0100, remaining unused
