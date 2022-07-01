@@ -8,7 +8,7 @@ use std::vec;
 /*
  * 16 registers available
  * instruction coded in 16 bit
- * id: 0000 0000 0000 0000 : instruction nop
+ * id: 0000 0000 0000 0000 0000 : instruction nop
 
 
 */
@@ -18,12 +18,8 @@ pub struct Instruction{
     pub op: String,
 }
 
-pub struct InstructionSet {
-    pub isa: HashMap<String, u8>,
-}
-
 pub struct MemoryMap {
-    pub register: HashMap<String, u32>, // general purpose registers
+    pub register: HashMap<String, Register>, // general purpose registers
     pub stack: Vec<Register>,// stack, iterator of 16 * u32 of size
     pub memory: HashMap<String, u32>, // memory of the cpu, 
 }
@@ -40,52 +36,38 @@ pub struct Register{
 pub struct Core {
     pub memory_map: MemoryMap,
     pub program: HashMap<u8, Vec<u8>>,
-    pub pc:u32,
-}
-
-impl InstructionSet {
-    pub fn new() -> InstructionSet{
-        let mut isa = HashMap::new();
-
-        isa.insert(String::from("NOP "), 0);
-        isa.insert(String::from("ADD"), 1);
-        isa.insert(String::from("SUB"), 2);
-        isa.insert(String::from("MOV"), 3);
-        isa.insert(String::from("PUSH"), 4);
-
-        // ...
-
-        InstructionSet { isa }
-    }
+    pub pc:u8,
 }
 
 impl Core {
-    pub fn new(&mut self) -> Core{
-        let mut memory_map = MemoryMap::new();
+    pub fn new() -> Core{
+        let memory_map = MemoryMap::new();
         let mut program = HashMap::new();
 
-        let instruction_to_exec = vec![/*op code*/0, 0, 0, 1,/*reg dest*/ 0, 0, 0, 1, /*reg src*/ 0, 0, 0, 1, /*unused*/ 0, 0, 0, 0, 0];
+        //vec![/*op code*/0, 0, 0, 1,/*reg dest*/ 0, 0, 0, 1, /*reg src*/ 0, 0, 0, 1, /*unused*/ 0, 0, 0, 0];
+        let instruction_to_exec = vec![];
         program.insert(0, instruction_to_exec); // instruction to execute : add r0,r1
 
-        let mut pc:u32 = 0;
+        let pc:u8 = 0;
         Core{memory_map, program, pc/*, data*/}
     }
 
-    pub fn fetch_instruction(&mut self, number:u8) -> &Vec<u8>{
+    pub fn fetch_instruction(&mut self) -> &Vec<u8>{
         // fetch already know the pc, so it grab the instruction machine code from at address pc
         // get the instruction
-        let instruction_read = self.program.get(&number).unwrap_or_else(||{
+        let instruction_read = self.program.get(&self.pc).unwrap_or_else(||{
             println!("error");
             process::exit(1);
         });
+        self.pc += 1; // increment the pc
         instruction_read
     }
 
-    pub fn decode_instruction(instruction_to_decode:&Vec<u8>) -> Vec<String>{
+    pub fn decode_instruction(self, instruction_to_decode:&Vec<u8>) -> Vec<String>{
         // now parse the instruction to read the register source and distination and also the operation to do
         // instruction contains OP REG1 REG 2 UNUSED*2 everything is coded in 1 byte
         // the first 4 bits are the op code
-        // 0000 0000 0000 0000 0000 : instruction nop
+        // 0000 0000 0000 0000 : instruction nop
         let opcode = &instruction_to_decode[0..4]; // returns 0, 1, 2, 3 th element
         let reg_src = &instruction_to_decode[4..8];
         let reg_dest = &instruction_to_decode[8..12];
@@ -95,30 +77,16 @@ impl Core {
         let mut reg_dest_human = String::new();
 
         // now convert the vector into a binary number
-        let mut op_value:u8 = 0;
-        for elm in opcode{
-            let mut i=3;
-            op_value = op_value + elm * 2^i;
-            i = i-1;
-        }
-        let mut reg_src_value:u8 = 0;
-        for elm in reg_src{
-            let mut i=3;
-            reg_src_value = reg_src_value + elm * 2^i;
-            i = i-1;
-        }
-        let mut reg_dest_value:u8 = 0;
-        for elm in reg_dest{
-            let mut i=3;
-            reg_dest_value = reg_dest_value + elm * 2^i;
-            i = i-1;
-        }
-        // non exhaustive
+        let op_value = vect_bin_to_dec(opcode);
+        let reg_dest_value = vect_bin_to_dec(reg_dest);
+        let reg_src_value = vect_bin_to_dec(reg_src);
+
         match op_value {
             0x00 => op_human.push_str("NOP"),
             0x01 => op_human.push_str("ADD"),
             0x02 => op_human.push_str("SUB"),
             0x03 => op_human.push_str("MOV"),
+            0x04 => op_human.push_str("OR"),
             _    => op_human.push_str(" "),
         };
 
@@ -144,28 +112,64 @@ impl Core {
         readable
     }
 
-    pub fn execute(instruction_human:Vec<String>) {
+    pub fn execute(&mut self, instruction_human:Vec<String>) -> Register{
         // now we execute the instruction with the old function
         // we start by reading the registers value and store them locally
         // aka register source and destination. 
         // we should provide the memory map here as input?? because the data are stored there
 
+        // instruction type : [op_human, reg_src_human, reg_dest_human];
+        // [OR, r0, r1]
+        let op = instruction_human[0].clone();
+        let dest = instruction_human[1].clone();
+        let src = instruction_human[2].clone();
 
         // read register source data
-
-
+        let reg_src = self.memory_map.register.get(&src).unwrap_or_else(||{
+            println!("error");
+            process::exit(1);
+        });
         //read register destination data
+        let reg_dest = self.memory_map.register.get(&dest).unwrap_or_else(||{
+            println!("error");
+            process::exit(1);
+        });
 
-
+        // call the instruction::execute method
+        let mut rd = Register { name: reg_dest.name.to_string(), value: reg_dest.value };
+        let reg_result = Instruction::execute_2(op.clone(), &mut rd, reg_src);
+                
         // write register detination with the result, the memory map should be mutable
-
-
-
+        reg_result
     }
+
+    pub fn write_back(&mut self, reg:Register) {
+        // take the destination register prev, and update the content in the memory
+        self.memory_map.register.insert(reg.name.clone(), reg);
+    }
+
+
+
 }
+
+fn vect_bin_to_dec(entry: &[u8]) -> u8 {
+    let mut value: u8 = 0;
+    let binary_base: u8 = 2;
+    let mut i= 0;
+
+    for elm in entry.iter().rev(){
+        value = {
+            value + elm * binary_base.pow(i)
+        };
+        i = i+1;
+    }
+    value
+}
+
+
 /*
- * 6 registers r0 to r5
- * SP: Stack pointer, PC: Program counter, LR: Link Register
+ * 16 registers r0 to r12 and SP LR PSR
+ * SP: Stack pointer, PSR: Process statut Register, LR: Link Register
 */
 impl MemoryMap {
     #[allow(non_snake_case)]
@@ -237,14 +241,14 @@ impl MemoryMap {
             println!("error parsing register {}", err);
             process::exit(1);
         });
-        let PC= Register::new("PC", 0x00).unwrap_or_else(|err| {
+        let PSR= Register::new("PSR", 0x00).unwrap_or_else(|err| {
             println!("error parsing register {}", err);
             process::exit(1);
         });
 
-        let mut hashmap: HashMap<String, u32> = HashMap::new();
+        let mut reg_hmap: HashMap<String, Register> = HashMap::new();
         let mut stack = Vec::new();
-        let pc_temp=Register{value:PC.value, name:String::from("PC")};
+        let psr_temp=Register{value:PSR.value, name:String::from("PSR")};
 
         // [memory program and datayy]
         // memory is of 16x32 bit or 512 bit or 64 Bytes or 0.064 kilobyte haha
@@ -271,28 +275,28 @@ impl MemoryMap {
         memory.insert(String::from("0x00_0E"), 0x00_00); // at address 0x00_0E, memory contains 0
         memory.insert(String::from("0x00_0F"), 0x00_00); // at address 0x00_0F, memory contains 0
 
-        stack.push(pc_temp);
+        stack.push(psr_temp);
 
         //[map the register into the memory]
-        hashmap.insert(r0.name, 0x20_00);
-        hashmap.insert(r1.name, 0x20_01);
-        hashmap.insert(r2.name, 0x20_02);
-        hashmap.insert(r3.name, 0x20_03);
-        hashmap.insert(r4.name, 0x20_04);
-        hashmap.insert(r5.name, 0x20_05);
-        hashmap.insert(r6.name, 0x20_06);
-        hashmap.insert(r7.name, 0x20_07);
-        hashmap.insert(r8.name, 0x20_08);
-        hashmap.insert(r9.name, 0x20_09);
-        hashmap.insert(r10.name, 0x20_0A);
-        hashmap.insert(r11.name, 0x20_0B);
-        hashmap.insert(r12.name, 0x20_0C);
+        reg_hmap.insert(r0.name.clone(), r0);
+        reg_hmap.insert(r1.name.clone(), r1);
+        reg_hmap.insert(r2.name.clone(), r2);
+        reg_hmap.insert(r3.name.clone(), r3);
+        reg_hmap.insert(r4.name.clone(), r4);
+        reg_hmap.insert(r5.name.clone(), r5);
+        reg_hmap.insert(r6.name.clone(), r6);
+        reg_hmap.insert(r7.name.clone(), r7);
+        reg_hmap.insert(r8.name.clone(), r8);
+        reg_hmap.insert(r9.name.clone(), r9);
+        reg_hmap.insert(r10.name.clone(), r10);
+        reg_hmap.insert(r11.name.clone(), r11);
+        reg_hmap.insert(r12.name.clone(), r12);
 
-        hashmap.insert(SP.name, 0x20_0D);
-        hashmap.insert(LR.name, 0x20_0E);
-        hashmap.insert(PC.name, 0x20_0F);
+        reg_hmap.insert(SP.name.clone(), SP);
+        reg_hmap.insert(LR.name.clone(), LR);
+        reg_hmap.insert(PSR.name.clone(), PSR);
 
-        MemoryMap { register:hashmap, stack, memory }
+        MemoryMap { register:reg_hmap, stack, memory }
     }
 }
 
@@ -386,6 +390,99 @@ impl Instruction{
 #[cfg(test)]
 mod tests{
     use super::*;
+
+    // all tests bellow are passing !
+    #[test]
+    fn test_core_fetch() {
+        // machine code or the program: it has an instruction address and instruction code
+        /*
+         * Example of application machine code
+         * 00000000 <app_name>:
+         *     0:       1120           add      r0,     r1
+         *     1:       3420           mov      r3,     r1
+         *     2:       1120           add      r0,     r1
+         *     3:       1120           add      r0,     r1
+         *     ...           ...           ...         ...
+         *     ff:      1120           add      r0,     r1
+         *
+        */
+        // this section test the fetch and PC incremential system
+        let mut core = Core::new();
+
+        // the code is in binary
+        core.program.insert(0, vec![/*op code*/0, 0, 0, 1,/*reg dest*/ 0, 0, 0, 1, /*reg src*/ 0, 0, 1, 0, /*unused*/ 0, 0, 0, 0]);
+        core.program.insert(1, vec![/*op code*/0, 0, 1, 1,/*reg dest*/ 0, 1, 0, 0, /*reg src*/ 0, 0, 1, 0, /*unused*/ 0, 0, 0, 0]);
+
+        // read this code
+        let expected_program_line_0: Vec<u8> = vec![/*op code*/0, 0, 0, 1,/*reg dest*/ 0, 0, 0, 1, /*reg src*/ 0, 0, 1, 0, /*unused*/ 0, 0, 0, 0];
+        let fetched_program_line_0 = core.fetch_instruction(); // this will fetch the first instruction, address 0
+
+        assert_eq!(&expected_program_line_0, fetched_program_line_0);
+    }
+    #[test]
+    fn test_core_decode() {
+        let core = Core::new();
+        // 0100 is the opcode OR
+        // 0001 is r0
+        // 0010 is r1
+        let instruction_to_decode: Vec<u8> = vec![/*op code*/0, 0, 0, 1,/*reg dest*/ 0, 0, 0, 1, /*reg src*/ 0, 0, 1, 0, /*unused*/ 0, 0, 0, 0, 0];
+        
+        let instruction_human = core.decode_instruction(&instruction_to_decode);
+        let expected_instruction = vec![String::from("ADD"), String::from("r0"), String::from("r1")];
+
+        assert_eq!(instruction_human, expected_instruction);
+    }
+    #[test]
+    fn test_core_write_back() {
+        let mut core = Core::new();
+
+        // insert to r0, value 5    
+        core.memory_map.register.insert("r0".to_string(), Register { name: String::from("r0"), value: 5 });
+
+        let new_reg = Register{
+            name:String::from("r0"),
+            value:6,
+        };
+
+        // execute write back, should overwrite the r0 register value to new value (15)
+        core.write_back(new_reg);
+
+        let expected_reg = core.memory_map.register.get("r0").unwrap_or_else(||{
+            println!("error");
+            process::exit(1);
+        });
+        // new_reg moved previously, it's easy to just shadow it
+        let new_reg = Register{
+            name:String::from("r0"),
+            value:6,
+        };
+        assert_eq!(new_reg.value, expected_reg.value);
+        assert_eq!(new_reg.name, expected_reg.name);
+    }
+    #[test]
+    fn test_core_execution() {
+        let instruction = vec![String::from("OR"), String::from("r0"), String::from("r1")];
+        let mut core = Core::new();
+
+        // update the register set r0=5, r1=9;
+        // 0101 OR 1001 => 1101(13) remember, this is Logical OR, NOT ADD
+        core.memory_map.register.insert("r0".to_string(), Register { name: String::from("r0"), value: 5 });
+        core.memory_map.register.insert("r1".to_string(), Register { name: String::from("r1"), value: 9 });
+
+        // this should execute OR r0, r1   with r0 = 5 = dest, r1 = 9 = src, result saved into r0 should be 13
+        let return_reg = core.execute(instruction);
+
+        let expected_reg = Register{
+            name:String::from("r0"),
+            value:13,
+        };
+
+        assert_eq!(return_reg.value, expected_reg.value);
+        assert_eq!(return_reg.name, expected_reg.name);
+    }
+
+
+
 
     #[test]
     fn or_op_test(){
