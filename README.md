@@ -29,7 +29,7 @@ Starting with Rust programming, simple UAL
 | LR | 0x10 |
 
 
-## Instruction Set
+## Instruction Set (to add more)
 | op | operands | binary | operands | comment |
 | ------ | ------ | ------ | ------ | ------ |
 | nop | -- | 0000 | 0000 0000 0000 | nop operation, cpu does onothing |
