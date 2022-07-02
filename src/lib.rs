@@ -4,14 +4,13 @@ use std::process;
 use std::{u8, /*i16*/};
 use std::vec;
 use std::mem::transmute;
+use colored::Colorize;
 
 
 /*
  * 16 registers available
  * instruction coded in 16 bit
  * id: 0000 0000 0000 0000 0000 : instruction nop
-
-
 */
 pub struct Instruction{
     pub reg_mode: String,
@@ -37,7 +36,8 @@ pub struct Register{
 pub struct Core {
     pub memory_map: MemoryMap,
     pub program: HashMap<u8, Vec<u8>>,
-    pub pc:u8,
+    pub pc: u8,
+    pub pc_length: u8,
 }
 
 impl Core {
@@ -49,8 +49,9 @@ impl Core {
         let instruction_to_exec = vec![];
         program.insert(0, instruction_to_exec); // instruction to execute : add r0,r1
 
-        let pc:u8 = 0;
-        Core{memory_map, program, pc/*, data*/}
+        let pc: u8 = 0;
+        let pc_length: u8 = 0;
+        Core{memory_map, program, pc, pc_length/*, data*/}
     }
 
     pub fn fetch_instruction(&mut self) -> &Vec<u8>{
@@ -227,8 +228,78 @@ impl Core {
         self.memory_map.register.insert(reg.name.clone(), reg);
     }
 
+    pub fn init_program(&mut self) {
+        // load the program into the instructions register
+        // program instruction are stored in memory starting at address 0x04
+        // convert the u32 value into a vector of 0's and 1's
+        let mut i = 0;
+        let mut addr_read: u8 = 0x04;
 
+        while i < self.pc_length { // i start at address 0
+            // read the instruction
+            let value_at_address = self.memory_map.memory.get(&addr_read).unwrap_or_else(||{
+                println!("invalid address load, init program");
+                process::exit(1);
+            });
+            
+            // convert the digit into a binary value and put it into the program variable
+            // each field in the hashmap has an instruction address, and instruction machine code (in binary)
+            let res = inst_to_vec_bin(value_at_address);
+            
+            self.program.insert(i, res);
 
+            addr_read += 1;
+            i += 1;
+        }
+    }
+    
+    pub fn load_machine_code(&mut self, program: String) {
+        // read binary code from a program file
+        let prog_line:Vec<String> = program.lines()
+                    .map(|s| s.trim().split("\n").map(String::from)
+                    .collect())
+                    .collect();
+
+        // write the binary value into the program memory
+        /*
+         * program memory is 4 bytes wide, instruction is 2 bytes
+         * we can store 2 instruction in the same memory address but for now I'll stick to one address for 1 instruction
+        */
+        let mut program_memory_start: u8 = 0x04;
+
+        for elm in prog_line.iter(){
+            if elm.eq("_start") {
+                continue;
+            } else if elm.eq("_end") {
+                break;
+            }
+            let new_line: Vec<&str> = elm.split(';').collect();
+
+            let value = u16::from_str_radix((new_line[0]).trim_start_matches("0x"), 16).expect("program line error ...");
+
+            self.memory_map.memory.insert(program_memory_start, u32::from(value));
+            program_memory_start += 1;
+
+        }
+        // write the number of instruction in the program
+        // instruction start from address 0x00, different from where they are stored in memory which start from 0x04
+        self.pc_length = program_memory_start - 0x04;
+
+    }
+
+    pub fn dump_memory(self) {
+        println!("{} ", format!("Memory Map").blue());
+        println!("{} \t\t {} ", format!("Address (u8)").blue(), format!("Value (u32)").green());
+        for location in self.memory_map.memory {
+            println!("{} \t => \t\t {}", format!("{}", location.0).blue(), format!("{}", location.1).green());
+        }
+
+        println!("{} ", format!("Registers").blue());
+        println!("{} \t\t {} ", format!("Register name)").blue(), format!("Value (u8)").green());
+        for reg in self.memory_map.register {
+            println!("{} \t => \t\t {}", format!("{}", reg.0).blue(), format!("{}", reg.1.value).green());
+        }
+    }
 }
 
 fn vect_bin_to_dec(entry: &[u8]) -> u8 {
@@ -245,6 +316,39 @@ fn vect_bin_to_dec(entry: &[u8]) -> u8 {
     value
 }
 
+fn inst_to_vec_bin(value: &u32) -> Vec<u8> {
+    let val_hex = format!("{:x}", value);
+
+    let digits: Vec<_> = val_hex.chars().collect();
+
+    let mut machine_instruction: Vec<u8> = vec![];
+    for digit in digits {
+        match digit {
+            '0'       =>  machine_instruction.append(&mut vec![0, 0, 0, 0]),
+            '1'       =>  machine_instruction.append(&mut vec![0, 0, 0, 1]),
+            '2'       =>  machine_instruction.append(&mut vec![0, 0, 1, 0]),
+            '3'       =>  machine_instruction.append(&mut vec![0, 0, 1, 1]),
+            '4'       =>  machine_instruction.append(&mut vec![0, 1, 0, 0]),
+            '5'       =>  machine_instruction.append(&mut vec![0, 1, 0, 1]),
+            '6'       =>  machine_instruction.append(&mut vec![0, 1, 1, 0]),
+            '7'       =>  machine_instruction.append(&mut vec![0, 1, 1, 1]),
+            '8'       =>  machine_instruction.append(&mut vec![1, 0, 0, 0]),
+
+            '9'       =>  machine_instruction.append(&mut vec![1, 0, 0, 1]),
+            'a'       =>  machine_instruction.append(&mut vec![1, 0, 1, 0]),
+            'b'       =>  machine_instruction.append(&mut vec![1, 0, 1, 1]),
+            'c'       =>  machine_instruction.append(&mut vec![1, 1, 0, 0]),
+            'd'       =>  machine_instruction.append(&mut vec![1, 1, 0, 1]),
+            'e'       =>  machine_instruction.append(&mut vec![1, 1, 1, 0]),
+            'f'       =>  machine_instruction.append(&mut vec![1, 1, 1, 1]),
+            _       => {
+
+            },
+        }
+    }
+
+    machine_instruction
+}
 
 /*
  * 16 registers r0 to r12 and SP LR PSR
@@ -333,13 +437,13 @@ impl MemoryMap {
         // memory is of 16x32 bits or 512 bits or 64 Bytes or 0.064 kilobyte haha
         let mut memory: HashMap<u8, u32> = HashMap::new();
 
-        // program memory : 4x16 bits or 64 bits or 24 Bytes
+        // data memory : 4x16 bits or 64 bits or 24 Bytes
         memory.insert(0x00, 0x00_00); // at address 0x00, memory contains 0
         memory.insert(0x01, 0x00_00); // at address 0x01, memory contains 0
         memory.insert(0x02, 0x00_00); // at address 0x02, memory contains 0
         memory.insert(0x03, 0x00_00); // at address 0x03, memory contains 0
         
-        // data memory : 12x16 bits or 192 bits or 8 Bytes
+        // program memory : 12x16 bits or 192 bits or 8 Bytes
         memory.insert(0x04, 0x00_00); // at address 0x04, memory contains 0
         memory.insert(0x05, 0x00_00); // at address 0x05, memory contains 0
         memory.insert(0x06, 0x00_00); // at address 0x06, memory contains 0
@@ -492,6 +596,132 @@ mod tests{
 
     // all tests bellow are passing !
     #[test]
+    fn core_dump() {
+        let mut core = Core::new();
+
+        let binary = String::from("_start\n\
+            0x1120; add r0, r1\n\
+            0xA510; mov r4, r0\n\
+            0x8150; ldi r0, 5\n\
+            0x9210; lds r1, 0x01\n\
+            0x4520; and r4, r1\n\
+            0x3510; or r4, r0\n\
+            _end\n\
+        ");
+
+        // populate the memory addresses
+        core.load_machine_code(binary);
+        core.dump_memory(); // and print it
+    }
+    #[test]
+    fn core_init_program() {
+        let mut core = Core::new();
+
+        // reminder: instructions have unique address, starting from 0
+        let binary = String::from("_start\n\
+            0x1120; add r0, r1\n\
+            0xA510; mov r4, r0\n\
+            0x8150; ldi r0, 5\n\
+            0x9210; lds r1, 0x01\n\
+            0x4520; and r4, r1\n\
+            0x3510; or r4, r0\n\
+            _end\n\
+        ");
+
+        core.load_machine_code(binary);
+        
+        // read instruction 2 as machine code (this one) 0xA510; mov r4, r0
+        // the machine code in binary should match [1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0]
+        // which is composed of op: 1010 (mov), 0101 (r4), 0001 (r0) 0000 (unused)
+        let expected_instruction_0: Vec<u8> = vec![0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0];
+        let expected_instruction_1: Vec<u8> = vec![1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0];
+        let expected_instruction_2: Vec<u8> = vec![1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0];
+        let expected_instruction_3: Vec<u8> = vec![1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0];
+        let expected_instruction_4: Vec<u8> = vec![0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0];
+        let expected_instruction_5: Vec<u8> = vec![0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0];
+
+        core.init_program(); // load the user program into the instructio register
+        
+        // read instruction at address 1 in the instruction register
+        let instruction_reg_out_0 = core.program.get(&0x00).unwrap_or_else(||{
+            process::exit(1);
+        });
+        let instruction_reg_out_1 = core.program.get(&0x01).unwrap_or_else(||{
+            process::exit(1);
+        });
+        let instruction_reg_out_2 = core.program.get(&0x02).unwrap_or_else(||{
+            process::exit(1);
+        });
+        let instruction_reg_out_3 = core.program.get(&0x03).unwrap_or_else(||{
+            process::exit(1);
+        });
+        let instruction_reg_out_4 = core.program.get(&0x04).unwrap_or_else(||{
+            process::exit(1);
+        });
+        let instruction_reg_out_5 = core.program.get(&0x05).unwrap_or_else(||{
+            process::exit(1);
+        });
+
+        assert_eq!(&expected_instruction_0, instruction_reg_out_0);
+        assert_eq!(&expected_instruction_1, instruction_reg_out_1);
+        assert_eq!(&expected_instruction_2, instruction_reg_out_2);
+        assert_eq!(&expected_instruction_3, instruction_reg_out_3);
+        assert_eq!(&expected_instruction_4, instruction_reg_out_4);
+        assert_eq!(&expected_instruction_5, instruction_reg_out_5);
+        
+    }
+    #[test]
+    fn load_machine_program() {
+        let mut core = Core::new();
+
+        let binary = String::from("_start\n\
+            0x1120; add r0, r1\n\
+            0xA510; mov r4, r0\n\
+            0x8150; ldi r0, 5\n\
+            0x9210; lds r1, 0x01\n\
+            0x4520; and r4, r1\n\
+            0x3510; or r4, r0\n\
+            _end\n\
+        ");
+
+        /*
+            same as î î î î î î î î î î î 
+            let binary = String::from("_start\n\
+            0001 0001 0010 0000 ; add r0, r1\n\
+            1010 0101 0001 0000 ; mov r4, r0\n\
+            1000 0001 0101 0000 ; ldi r0, 5\n\
+            1001 0010 0001 0000 ; lds r1, 0x01\n\
+            0100 0101 0010 0000 ; and r4, r1\n\
+            0011 0101 0001 0000 ; or r4, r0\n\
+            _end\n\
+        ");*/
+
+        core.load_machine_code(binary);
+
+        // show the memory content
+        let mut addr_read: u8 = 0x04;
+
+        loop {
+
+            let value_at_address = core.memory_map.memory.get(&addr_read).unwrap_or_else(||{
+                println!("invalid address load");
+                process::exit(1);
+            });
+            
+            if addr_read == 0x05 { // 1 after addr 0, address start at 4
+                assert_eq!(0xA510, *value_at_address);
+            } else if addr_read == 0x08  { // 4 (start) + 4 == 8  5th line of machie code
+                assert_eq!(0x4520, *value_at_address);
+            } 
+
+            addr_read += 1;
+            if addr_read == 6 {
+                break;
+            }
+        }
+
+    }
+    #[test]
     fn test_load_immediate() {
         /*
          * example
@@ -639,7 +869,7 @@ mod tests{
 
 
 
-    
+
     #[test]
     fn or_op_test(){
         let r1 = Register{
