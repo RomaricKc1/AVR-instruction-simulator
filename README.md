@@ -1,8 +1,13 @@
 # Whole Processor simulator, with ASM program file to execute.
 ### On-going development(it's my First Rust program so I --for sure-- have made mistakes.
-
+### Can we run DOOM on it?
+```rust
+fn main() {
+    println!("Sure, DOOM runs on everything :)");
+}
+```
 ### TODOS
-- Read a machine code as shown in the test section
+- Read a machine code as shown in the test section from a file passed as argument
 
 ```assambly
 
@@ -17,12 +22,47 @@
 ```
 - Remove old run mode
 - Add instruction, to save data in memory
-- Write an example program in machine code
-- Add a dump mode to print all the memory and register contents
+- Edit ```main.rs``` to run the whole system.
 
 
-# instruction-simulator
+# Instruction-simulator
 Starting with Rust programming, simple UAL
+
+## Memory dump after loading a program
+### test program
+```assambly
+_start
+     0   0x1120; add r0, r1
+     1   0xA510; mov r4, r0
+     2   0x8150; ldi r0, 5
+     3   0x9210; lds r1, 0x01
+     4   0x4520; and r4, r1
+     5   0x3510; or r4, r0
+_end
+```
+### Memory Map
+Program start at address 0x04 in memory, so 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 are modified with there respective machine code. 
+```rust
+Memory Map 
+Address (u8) 		        Value (u32) 
+9 	        => 		 13584
+10 	        => 		 0
+2 	        => 		 0
+13 	        => 		 0
+6 	        => 		 33104
+14 	        => 		 0
+5 	        => 		 42256
+3 	        => 		 0
+15 	        => 		 0
+1 	        => 		 0
+0 	        => 		 0
+12 	        => 		 0
+4 	        => 		 4384
+11 	        => 		 0
+7 	        => 		 37392
+8 	        => 		 17696
+
+```
 
 ## Processor architecture
 - 16 register from r0 to r15
