@@ -5,8 +5,6 @@ use std::{u8, /*i16*/};
 use std::vec;
 use std::mem::transmute;
 use colored::Colorize;
-
-
 /*
  * 16 registers available
  * instruction coded in 16 bit
@@ -54,18 +52,18 @@ impl Core {
         Core{memory_map, program, pc, pc_length/*, data*/}
     }
 
-    pub fn fetch_instruction(&mut self) -> &Vec<u8>{
+    pub fn fetch_instruction(&self) -> &Vec<u8>{
         // fetch already know the pc, so it grab the instruction machine code from at address pc
         // get the instruction
         let instruction_read = self.program.get(&self.pc).unwrap_or_else(||{
             println!("error");
             process::exit(1);
         });
-        self.pc += 1; // increment the pc
+        // self.pc += 1; // increment the pc
         instruction_read
     }
 
-    pub fn decode_instruction(self, instruction_to_decode:&Vec<u8>) -> Vec<String>{
+    pub fn decode_instruction(&self, instruction_to_decode:&Vec<u8>) -> Vec<String>{
         // now parse the instruction to read the register source and distination and also the operation to do
         // instruction contains OP REG1 REG 2 UNUSED*2 everything is coded in 1 byte
         // the first 4 bits are the op code
@@ -93,56 +91,134 @@ impl Core {
             0x08 => op_human.push_str("LDI"),
             0x09 => op_human.push_str("LDS"),
             0x0A => op_human.push_str("MOV"),
-            
+            0x0B => op_human.push_str("ST"),
             _    => op_human.push_str(" "),
         };
 
-        match reg_src_value {
-            0x01 => reg_src_human.push_str("r0"),
-            0x02 => reg_src_human.push_str("r1"),
-            0x03 => reg_src_human.push_str("r2"),
-            0x04 => reg_src_human.push_str("r3"),
+        // not all reg_src or dest are actual register. Some are just literal.
+        // check the op to see if we expect any literal in the instruction
+        // LDI reg K
+        // 0000 (op) 0000 (src) 0000 (dest) 0000 (unused)
 
-            0x05 => reg_src_human.push_str("r4"),
-            0x06 => reg_src_human.push_str("r5"),
-            0x07 => reg_src_human.push_str("r6"),
-            0x08 => reg_src_human.push_str("r7"),
-            0x09 => reg_src_human.push_str("r8"),
+        match op_human.as_str() {
+            "LDI" | "LDS"  => {
+                // reg_dest is a literal or address, not a register, we are sure reg_src is a register, we call match on it
+                match reg_src_value {
+                    0x01 => reg_src_human.push_str("r0"),
+                    0x02 => reg_src_human.push_str("r1"),
+                    0x03 => reg_src_human.push_str("r2"),
+                    0x04 => reg_src_human.push_str("r3"),
 
-            0x0A => reg_src_human.push_str("r9"),
-            0x0B => reg_src_human.push_str("r10"),
-            0x0C => reg_src_human.push_str("r11"),
-            0x0D => reg_src_human.push_str("r12"),
-            0x0E => reg_src_human.push_str("PSR"),
-            0x0F => reg_src_human.push_str("SP"),
+                    0x05 => reg_src_human.push_str("r4"),
+                    0x06 => reg_src_human.push_str("r5"),
+                    0x07 => reg_src_human.push_str("r6"),
+                    0x08 => reg_src_human.push_str("r7"),
+                    0x09 => reg_src_human.push_str("r8"),
 
-            0x10 => reg_src_human.push_str("LR"),
+                    0x0A => reg_src_human.push_str("r9"),
+                    0x0B => reg_src_human.push_str("r10"),
+                    0x0C => reg_src_human.push_str("r11"),
+                    0x0D => reg_src_human.push_str("r12"),
+                    0x0E => reg_src_human.push_str("PSR"),
+                    0x0F => reg_src_human.push_str("SP"),
 
-            _    => reg_src_human.push_str(" "),
-        };
+                    0x10 => reg_src_human.push_str("LR"),
 
-        match reg_dest_value {
-            0x01 => reg_dest_human.push_str("r0"),
-            0x02 => reg_dest_human.push_str("r1"),
-            0x03 => reg_dest_human.push_str("r2"),
-            0x04 => reg_dest_human.push_str("r3"),
+                    _    => reg_src_human.push_str(" "),
+                };
 
-            0x05 => reg_dest_human.push_str("r4"),
-            0x06 => reg_dest_human.push_str("r5"),
-            0x07 => reg_dest_human.push_str("r6"),
-            0x08 => reg_dest_human.push_str("r7"),
-            0x09 => reg_dest_human.push_str("r8"),
+                // Le missing dest literal: eg: [1, 0, 0, 1] : convert this into literal
+                let literal = vect_bin_to_dec(&reg_dest);
+                // execute expect an hex value
+                let literal = format!("0x{:x}", literal);
+                reg_dest_human.push_str(literal.as_str());
+                
+            },
+            "ST"   => {
+                // reg_src is a literal
+                // we can safely call match on the dest register
+                // 0000 (op) 0000 (src) 0000 (dest) 0000 (unused)
+                match reg_dest_value {
+                    0x01 => reg_dest_human.push_str("r0"),
+                    0x02 => reg_dest_human.push_str("r1"),
+                    0x03 => reg_dest_human.push_str("r2"),
+                    0x04 => reg_dest_human.push_str("r3"),
 
-            0x0A => reg_dest_human.push_str("r9"),
-            0x0B => reg_dest_human.push_str("r10"),
-            0x0C => reg_dest_human.push_str("r11"),
-            0x0D => reg_dest_human.push_str("r12"),
-            0x0E => reg_dest_human.push_str("PSR"),
-            0x0F => reg_dest_human.push_str("SP"),
+                    0x05 => reg_dest_human.push_str("r4"),
+                    0x06 => reg_dest_human.push_str("r5"),
+                    0x07 => reg_dest_human.push_str("r6"),
+                    0x08 => reg_dest_human.push_str("r7"),
+                    0x09 => reg_dest_human.push_str("r8"),
 
-            0x10 => reg_dest_human.push_str("LR"),
+                    0x0A => reg_dest_human.push_str("r9"),
+                    0x0B => reg_dest_human.push_str("r10"),
+                    0x0C => reg_dest_human.push_str("r11"),
+                    0x0D => reg_dest_human.push_str("r12"),
+                    0x0E => reg_dest_human.push_str("PSR"),
+                    0x0F => reg_dest_human.push_str("SP"),
 
-            _    => reg_dest_human.push_str(" "),
+                    0x10 => reg_dest_human.push_str("LR"),
+
+                    _    => reg_dest_human.push_str(" "),
+                };
+                // Le missing src literal or address to be precise
+                // st  0x0B, r0
+                let addr = vect_bin_to_dec(&reg_src);
+                // execute expect an hex value
+                let addr = format!("0x{:x}", addr);
+                reg_src_human.push_str(addr.as_str());
+            },
+
+            _       => {
+                // reg_src and reg_dest are normal register
+                match reg_src_value {
+                    0x01 => reg_src_human.push_str("r0"),
+                    0x02 => reg_src_human.push_str("r1"),
+                    0x03 => reg_src_human.push_str("r2"),
+                    0x04 => reg_src_human.push_str("r3"),
+
+                    0x05 => reg_src_human.push_str("r4"),
+                    0x06 => reg_src_human.push_str("r5"),
+                    0x07 => reg_src_human.push_str("r6"),
+                    0x08 => reg_src_human.push_str("r7"),
+                    0x09 => reg_src_human.push_str("r8"),
+
+                    0x0A => reg_src_human.push_str("r9"),
+                    0x0B => reg_src_human.push_str("r10"),
+                    0x0C => reg_src_human.push_str("r11"),
+                    0x0D => reg_src_human.push_str("r12"),
+                    0x0E => reg_src_human.push_str("PSR"),
+                    0x0F => reg_src_human.push_str("SP"),
+
+                    0x10 => reg_src_human.push_str("LR"),
+
+                    _    => reg_src_human.push_str(" "),
+                };
+
+                match reg_dest_value {
+                    0x01 => reg_dest_human.push_str("r0"),
+                    0x02 => reg_dest_human.push_str("r1"),
+                    0x03 => reg_dest_human.push_str("r2"),
+                    0x04 => reg_dest_human.push_str("r3"),
+
+                    0x05 => reg_dest_human.push_str("r4"),
+                    0x06 => reg_dest_human.push_str("r5"),
+                    0x07 => reg_dest_human.push_str("r6"),
+                    0x08 => reg_dest_human.push_str("r7"),
+                    0x09 => reg_dest_human.push_str("r8"),
+
+                    0x0A => reg_dest_human.push_str("r9"),
+                    0x0B => reg_dest_human.push_str("r10"),
+                    0x0C => reg_dest_human.push_str("r11"),
+                    0x0D => reg_dest_human.push_str("r12"),
+                    0x0E => reg_dest_human.push_str("PSR"),
+                    0x0F => reg_dest_human.push_str("SP"),
+
+                    0x10 => reg_dest_human.push_str("LR"),
+
+                    _    => reg_dest_human.push_str(" "),
+                };
+            },
         };
 
         // everything set, now return the machin code as human readable
@@ -163,13 +239,8 @@ impl Core {
         let dest = instruction_human[1].clone();
         let src = instruction_human[2].clone();
 
-        
-        //read register destination data
-        let reg_dest = self.memory_map.register.get(&dest).unwrap_or_else(||{
-            println!("error reg_dest");
-            process::exit(1);
-        });
         let mut reg_src = &Register { name: String::new(), value: 0 };
+        let mut reg_dest = &Register { name: String::new(), value: 0 };
 
         // for example a LDI instruction load immediate value into the specified register
         // check if the op is LDI and call the corresponding function
@@ -179,16 +250,39 @@ impl Core {
             "LDI"       =>  {
                 addressing_mode = String::from("Data Direct");
                 // reg_src is a constant here
+                //read register destination data
+                reg_dest = self.memory_map.register.get(&dest).unwrap_or_else(||{
+                    println!("error reg_dest");
+                    process::exit(1);
+                });
             },
             "LDS"       =>  {
                 addressing_mode = String::from("Data Direct 2");
                 // reg_src is a literal address here
+                //read register destination data
+                reg_dest = self.memory_map.register.get(&dest).unwrap_or_else(||{
+                    println!("error reg_dest");
+                    process::exit(1);
+                });
+            },
+            "ST"       =>  {
+                addressing_mode = String::from("Store Direct");
+                // reg_src is a register and reg_dest is an address in memory
+                reg_src = self.memory_map.register.get(&src).unwrap_or_else(||{
+                    println!("error reg src");
+                    process::exit(1);
+                });
             },
             _           =>  {
                 addressing_mode = String::from("Register Direct");
                 // read register source data, only valid in Register Direct mode not data
                 reg_src = self.memory_map.register.get(&src).unwrap_or_else(||{
                     println!("error reg src");
+                    process::exit(1);
+                });
+                //read register destination data
+                reg_dest = self.memory_map.register.get(&dest).unwrap_or_else(||{
+                    println!("error reg_dest");
                     process::exit(1);
                 });
             },
@@ -205,16 +299,27 @@ impl Core {
 
             "Data Direct"       =>      {
                 // in data direct, there's no source register, instead a literal value
-                let literal = u8::from_str_radix((&src).trim_start_matches("0x"), 16).expect("expected an Hex value");
+                let literal = u8::from_str_radix((&src).trim_start_matches("0x"), 16).expect("expected an Hex value, Data Direct");
                 // set destinarion reg value to the literal
                 reg_result = Instruction::execute_load_immediate(reg_dest, literal);
+                // should write the literal value into the register directly
+                self.write_back(&reg_result);
             },
             "Data Direct 2"       =>      {
                 // in data direct 2, there's no source register, instead an address to data in memory space
                 let address_value = u8::from_str_radix((&src).trim_start_matches("0x"), 16).expect("expected an Hex value");
                 reg_result = Instruction::execute_load_from_addr(reg_dest, &address_value, &self.memory_map);
+                // should also write the value contained at that address into the register directly
+                self.write_back(&reg_result);
             },
-
+            "Store Direct"       =>      {
+                // in store direct, reg_dest is an address, reg_src is a register
+                // ST    0x01,      r0
+                // we store the content of that particular register in memory at address dest
+                let address_value = u8::from_str_radix((&dest).trim_start_matches("0x"), 16).expect("expected an Hex value ST");
+                reg_result = Instruction::execute_store_into_addr(reg_src, &address_value);
+                self.write_back_mem(&reg_result);
+            },
             _                     =>    {
                 // just do nothing
             },
@@ -223,8 +328,15 @@ impl Core {
 
     }
 
-    pub fn write_back(&mut self, reg:Register) {
+    pub fn write_back_mem(&mut self, reg: &Register) {
+        // reg contains the value to be written in value field, at address in name field
+        let the_addr = u8::from_str_radix(&reg.name, 10).expect("err writing in memory with ST");
+        self.memory_map.memory.insert(the_addr, u32::from(reg.value));
+    }
+
+    pub fn write_back(&mut self, reg: &Register) {
         // take the destination register prev, and update the content in the memory
+        let reg = Register { name: reg.name.clone(), value: reg.value };
         self.memory_map.register.insert(reg.name.clone(), reg);
     }
 
@@ -287,16 +399,16 @@ impl Core {
 
     }
 
-    pub fn dump_memory(self) {
+    pub fn dump_memory(&self) {
         println!("{} ", format!("Memory Map").blue());
         println!("{} \t\t {} ", format!("Address (u8)").blue(), format!("Value (u32)").green());
-        for location in self.memory_map.memory {
+        for location in &self.memory_map.memory {
             println!("{} \t => \t\t {}", format!("{}", location.0).blue(), format!("{}", location.1).green());
         }
 
         println!("{} ", format!("Registers").blue());
         println!("{} \t\t {} ", format!("Register name)").blue(), format!("Value (u8)").green());
-        for reg in self.memory_map.register {
+        for reg in &self.memory_map.register {
             println!("{} \t => \t\t {}", format!("{}", reg.0).blue(), format!("{}", reg.1.value).green());
         }
     }
@@ -561,6 +673,13 @@ impl Instruction{
         Register { name: register.name.clone(), value: literal}
     }
 
+    pub fn execute_store_into_addr(register: &Register, addr: &u8) -> Register {
+        // store the value of register in memory at addres addr
+        // put in reg name, the addr of memory, & value to be stored in memory, in value field
+        Register { name: addr.to_string(), value: register.value }
+        // and the addres is not incremented as of the AVR instruction "ST" described in the manual
+    }
+
     pub fn execute_load_from_addr(register: &Register, addr: &u8, memory: &MemoryMap) -> Register{
         // read the memory map and set the input register with it's contents
         let value_at_address = memory.memory.get(addr).unwrap_or_else(||{
@@ -595,6 +714,107 @@ mod tests{
     use super::*;
 
     // all tests bellow are passing !
+    #[test]
+    fn simple_prog() {
+        let mut core = Core::new();
+
+        // simple program: r0 <- 0x09, then store content of r0 at address 0x0B in memory
+        // read back the value at this address and put it into register r1
+        let binary = String::from("_start\n\
+            0x8190; ldi r0, 0x09\n\
+            0xBB10; st  0x0B, r0\n\
+            0x92B0; lds  r1, 0x0B\n\
+            _end\n\
+        ");
+
+        core.load_machine_code(binary); // store the program in the program memory
+        core.init_program(); // load the program instruction in instructions register
+
+        // program memory start at 0x04, so 0x04 and 0x05 will contain the istructions above
+
+
+        // expected machine code: 1) 1000 (LDI) 0001 (r0)   1001 (0x09) 0000 (unused)
+        //                        2) 1011 (ST)  1011 (0x0B) 0001 (r0)   0000 (unused)
+        //                        2) 1001 (LDS) 0010 (r1)   1011 (0x0B) 0000 (unused)
+
+        let expected_instruction_0: Vec<u8> = vec![1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0];
+        let expected_instruction_1: Vec<u8> = vec![1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0];
+        let expected_instruction_2: Vec<u8> = vec![1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0];
+
+        // read instruction at address 0, 1 and 2 from the instructions register
+        let instruction_reg_out_0 = core.program.get(&0x00).unwrap_or_else(||{
+            process::exit(1);
+        });
+        let instruction_reg_out_1 = core.program.get(&0x01).unwrap_or_else(||{
+            process::exit(1);
+        });
+        let instruction_reg_out_2 = core.program.get(&0x02).unwrap_or_else(||{
+            process::exit(1);
+        });
+
+        assert_eq!(&expected_instruction_0, instruction_reg_out_0);
+        assert_eq!(&expected_instruction_1, instruction_reg_out_1);
+        assert_eq!(&expected_instruction_2, instruction_reg_out_2);
+
+
+        // now execute these instructions
+        // pc = 0 at the beginning : read instruction at address 0
+        let ins = core.fetch_instruction();
+        let ins_2 = core.decode_instruction(ins);
+        core.execute(ins_2);
+
+        core.pc += 1; // pc = 1, so the cpu read the 2nd instruction
+        let ins = core.fetch_instruction();
+        let ins_2 = core.decode_instruction(ins);
+        core.execute(ins_2);
+
+        core.pc += 1; // pc = 2, so the cpu read the 3rd instruction
+        let ins = core.fetch_instruction();
+        let ins_2 = core.decode_instruction(ins);
+        core.execute(ins_2);
+
+        // simple program: r0 <- 0x09, then store content of r0 at address 0x0B in memory
+        // we expect address 0x0B to contains 0x09
+        core.dump_memory();
+        let value_at_address = core.memory_map.memory.get(&0x0B).unwrap_or_else(||{
+            println!("invalid address load");
+            process::exit(1);
+        });
+        // read back the value at this address and put it into register r1
+        // we expect r1 to contains the value stored at address 0x0B aka 0x09
+        
+        assert_eq!(value_at_address, &0x09u32);
+
+        let reg = core.memory_map.register.get("r1").unwrap_or_else(||{
+            println!("invalid address load");
+            process::exit(1);
+        });
+        assert_eq!(reg.value, 0x09u8);
+        assert_eq!(reg.name, "r1");
+    }
+    #[test]
+    fn store_at_addr() {
+        let mut core = Core::new();
+
+        // load the content at address 0x05 in register r0
+        let instruction = vec![String::from("ST"), String::from("0x05"), String::from("r0")];
+        // insert something in r0    
+        let expectation = Register { name: "r0".to_string(), value: 0x22 };
+        core.memory_map.register.insert(expectation.name.clone(), expectation);
+
+
+        core.execute(instruction); // return value : don't care here
+
+        // read memory at addr 0x05, should be equal to r0's value
+        core.dump_memory();
+        let value_read_at: &u32 = core.memory_map.memory.get(&0x05).unwrap_or_else(||{
+            process::exit(1);
+        });
+        let expectation = Register { name: "r0".to_string(), value: 0x22 };
+        let val: u32 = u32::from(expectation.value);
+
+        assert_eq!(value_read_at, &val);
+    }
     #[test]
     fn core_dump() {
         let mut core = Core::new();
@@ -640,7 +860,7 @@ mod tests{
         let expected_instruction_4: Vec<u8> = vec![0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0];
         let expected_instruction_5: Vec<u8> = vec![0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0];
 
-        core.init_program(); // load the user program into the instructio register
+        core.init_program(); // load the user program into the instructions register
         
         // read instruction at address 1 in the instruction register
         let instruction_reg_out_0 = core.program.get(&0x00).unwrap_or_else(||{
@@ -831,7 +1051,7 @@ mod tests{
         };
 
         // execute write back, should overwrite the r0 register value to new value (15)
-        core.write_back(new_reg);
+        core.write_back(&new_reg);
 
         let expected_reg = core.memory_map.register.get("r0").unwrap_or_else(||{
             println!("error");
