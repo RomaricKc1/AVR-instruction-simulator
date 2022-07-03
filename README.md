@@ -21,14 +21,62 @@ fn main() {
         ff:      1120           add      r0,     r1
 ```
 - Remove old run mode
-- Add instruction, to save data in memory
 - Edit ```main.rs``` to run the whole system.
 
 
 # Instruction-simulator
 Starting with Rust programming, simple UAL
 
-## Memory dump after loading a program
+## Memory dump after loading a program 1
+### test program
+```assambly
+_start
+     0  0x8190; ldi r0, 0x09
+     1  0xBB10; st  0x0B, r0
+     2  0x92B0; lds r1, 0x0B
+_end
+```
+### Memory Map and register Map (register r0 and r1 have their new content
+```rust
+Memory Map 
+Address (u8) 		 Value (u32) 
+2 	 => 		 0
+0 	 => 		 0
+1 	 => 		 0
+13 	 => 		 0
+7 	 => 		 0
+5 	 => 		 47888
+12 	 => 		 0
+3 	 => 		 0
+4 	 => 		 33168
+11 	 => 		 9
+14 	 => 		 0
+8 	 => 		 0
+9 	 => 		 0
+6 	 => 		 37552
+10 	 => 		 0
+15 	 => 		 0
+Registers 
+Register name) 		 Value (u8) 
+SP 	 => 		 0
+r4 	 => 		 0
+r10 	 => 		 0
+r11 	 => 		 0
+r9 	 => 		 0
+r3 	 => 		 0
+r1 	 => 		 9
+r2 	 => 		 0
+r7 	 => 		 0
+LR 	 => 		 0
+PSR 	 => 		 0
+r5 	 => 		 0
+r6 	 => 		 0
+r12 	 => 		 0
+r8 	 => 		 0
+r0 	 => 		 9
+```
+
+## Memory dump after loading a program 2
 ### test program
 ```assambly
 _start
@@ -109,6 +157,8 @@ Address (u8) 		        Value (u32)
 | ldi | rd, K | 1000 | rd rd rd rd   K K K K 0000 | Load Immediate the literal K to register rd |
 | lds | rd, k | 1001 | rd rd rd rd   k k k k 0000 | Load Direct from Data Space at addresse k to register rd |
 | mov | rd, rs | 1010 | rd rd rd rd   rs rs rs rs 0000 | move rs to rd and return rd |
+| st | k, rs | 1011 | k k k k   rs rs rs rs 0000 | Sore direct the content of rs into the memory address k |
+
 
 ## Memory Map (512 bits)
 | Addresse (1 byte) | Value (4 bytes) | Addresse (1 byte) | Value (4 bytes)  |
