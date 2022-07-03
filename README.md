@@ -98,7 +98,7 @@ Address (u8) 		        Value (u32)
 | or | rd, rs | 0011 | rd rd rd rd   rs rs rs rs 0000 | logical or, rs to rd and return rd |
 | and | rd, rs | 0100 | rd rd rd rd   rs rs rs rs 0000 | logical and, rs to rd and return rd |
 
-## Instruction Set :: Changle flow (7)
+## Instruction Set :: Change flow (7)
 | op | operands | binary | operands | comment |
 | ------ | ------ | ------ | ------ | ------ |
 | jmp | addr | 0111 | adr adr adr adr adr adr adr adr 0000| jump to address addr |
