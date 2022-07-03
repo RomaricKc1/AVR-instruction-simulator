@@ -41,7 +41,7 @@ _start
 _end
 ```
 ### Memory Map
-Program start at address 0x04 in memory, so 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 are modified with there respective machine code. 
+Program start at address 0x04 in memory, so 0x04, 0x05, 0x06, 0x07, 0x08, 0x09 are modified with their respective machine code. 
 ```rust
 Memory Map 
 Address (u8) 		        Value (u32) 
