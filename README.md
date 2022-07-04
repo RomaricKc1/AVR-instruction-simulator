@@ -1,5 +1,20 @@
-# Whole Processor simulator, with ASM program file to execute.
-### On-going development(it's my First Rust program so I --for sure-- have made mistakes.
+# AVR-like Instruction set simulator
+Starting with `Rust` programming, simple UAL.
+
+Concepts learned:
+```
+ownership
+structure
+patern matching
+data collection
+error handling
+testing
+closures
+iterators
+conditions ...
+```
+
+### On-going development(it's my First Rust program so I `for sure` have made mistakes.
 ### Can we run DOOM on it?
 ```rust
 fn main() {
@@ -7,8 +22,11 @@ fn main() {
 }
 ```
 ### TODOS
-- Read a machine code as shown in the test section from a file passed as argument
-
+- Add conditional jump ( branche if not equal, jump, ...)
+- Store multiple u8 data in the u32 memory space, not a single u8
+- Add logical and arithmetical operation
+- Use the last 1/2 byte of the instruction in order to manipulate values > 0xff
+- Better parse system to read instruction like this :
 ```assambly
 
     00000000 <app_name>:
@@ -20,12 +38,62 @@ fn main() {
         
         ff:      1120           add      r0,     r1
 ```
-- Remove old run mode
-- Edit ```main.rs``` to run the whole system.
 
+### RUN
+```bash
+cargo run application/prog.S 
+```
+### prog.S (note `\n` at the end of each line, including _start and _end lines)
+```assambly
+_start
+0x8190; ldi r0, 0x09
+0xBB10; st  0x0B, r0
+0x92B0; lds r1, 0x0B
+_end
 
-# Instruction-simulator
-Starting with Rust programming, simple UAL
+```
+
+### std output
+```Rust
+AVR-like Instruction Set simulator
+Memory Map 
+Address (u8) 		 Value (u32) 
+9 	 => 		 0
+15 	 => 		 0
+8 	 => 		 0
+6 	 => 		 37552
+1 	 => 		 0
+3 	 => 		 0
+11 	 => 		 9
+12 	 => 		 0
+13 	 => 		 0
+2 	 => 		 0
+7 	 => 		 0
+0 	 => 		 0
+10 	 => 		 0
+14 	 => 		 0
+5 	 => 		 47888
+4 	 => 		 33168
+Registers 
+Register name) 		 Value (u8) 
+r9 	 => 		 0
+r1 	 => 		 9
+LR 	 => 		 0
+r11 	 => 		 0
+PSR 	 => 		 0
+r6 	 => 		 0
+r10 	 => 		 0
+r7 	 => 		 0
+r2 	 => 		 0
+r12 	 => 		 0
+r3 	 => 		 0
+r0 	 => 		 9
+r5 	 => 		 0
+r8 	 => 		 0
+SP 	 => 		 0
+r4 	 => 		 0
+  	
+```
 
 ## Memory dump after loading a program 1
 ### test program
@@ -174,11 +242,6 @@ Address (u8) 		        Value (u32)
 
 
 
-
-
-
-
-
 ## Example of Instruction execution
 r2 is register 0011, r3 is register 0100, remaining unused
 ```
@@ -186,49 +249,4 @@ machine code : 0011 0011 0100 0000
 
 same as 
 ASM          : MOV r2, r3 ;move content of r3 into r2
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### Old, on revision
-
-### RUN
-```bash
-cargo run Register_Direct r1 0x03 r2 0x04 OR
-```
-### std output
-```Rust
-AVR-8 I simulatior  
-################################  
-Execution mode: Register Direct  
-Intruction execution  
-Op Code 		     reg src		         reg dest  
---------------------------------------------------------------------------------------
-OR 		           r1[value: 3] 		   r2[value: 4, new value: 7] 	  	
 ```
