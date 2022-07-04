@@ -27,7 +27,7 @@ fn main() {
 - Add logical and arithmetical operation
 - Use the last 1/2 byte of the instruction in order to manipulate values > 0xff
 - Better parse system to read instruction like this :
-```assambly
+```assembly
 
     00000000 <app_name>:
         0:       1120           add      r0,     r1
@@ -44,7 +44,7 @@ fn main() {
 cargo run application/prog.S 
 ```
 ### prog.S (note `\n` at the end of each line, including _start and _end lines)
-```assambly
+```assembly
 _start
 0x8190; ldi r0, 0x09
 0xBB10; st  0x0B, r0
@@ -97,7 +97,7 @@ r4 	 => 		 0
 
 ## Memory dump after loading a program 1
 ### test program
-```assambly
+```assembly
 _start
      0  0x8190; ldi r0, 0x09
      1  0xBB10; st  0x0B, r0
@@ -146,7 +146,7 @@ r0 	 => 		 9
 
 ## Memory dump after loading a program 2
 ### test program
-```assambly
+```assembly
 _start
      0   0x1120; add r0, r1
      1   0xA510; mov r4, r0
@@ -182,7 +182,7 @@ Address (u8) 		        Value (u32)
 
 ## Processor architecture
 - 16 register from r0 to r15
-- 16 memory block divided into program and data each block has 32 bits total 512 bit or 64 bytes
+- 16 memory blocks divided into program and data each block has 32 bits total 512 bits or 64 bytes
 
 ## Register (16)
 | Register | addr | Register | addr |
@@ -244,9 +244,9 @@ Address (u8) 		        Value (u32)
 
 ## Example of Instruction execution
 r2 is register 0011, r3 is register 0100, remaining unused
-```
-machine code : 0011 0011 0100 0000
+```assembly
+1010 0011 0100 0000; machine code
 
-same as 
-ASM          : MOV r2, r3 ;move content of r3 into r2
+;same as 
+    0   0xA340 ; MOV r2, r3 move content of r3 into r2
 ```
