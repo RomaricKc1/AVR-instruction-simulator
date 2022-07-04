@@ -5,6 +5,8 @@ use std::{u8, /*i16*/};
 use std::vec;
 use std::mem::transmute;
 use colored::Colorize;
+use std::fs;
+
 /*
  * 16 registers available
  * instruction coded in 16 bit
@@ -412,6 +414,24 @@ impl Core {
             println!("{} \t => \t\t {}", format!("{}", reg.0).blue(), format!("{}", reg.1.value).green());
         }
     }
+
+    pub fn run_program(&mut self) -> Result<(), Box<dyn Error>> {
+        while self.pc < self.pc_length {
+            let ins = self.fetch_instruction();
+            let ins_2 = self.decode_instruction(ins);
+            self.execute(ins_2);
+
+            self.pc += 1;
+        }
+
+        Ok(())
+    }
+
+    pub fn init_system(&mut self, filename: String) {
+        let binary = fs::read_to_string(filename).expect("Error reading program file");
+        self.load_machine_code(binary);
+        self.init_program();
+    }
 }
 
 fn vect_bin_to_dec(entry: &[u8]) -> u8 {
@@ -634,7 +654,7 @@ impl Instruction{
         Ok( Instruction { reg_mode, regs, op: operation })
     }
     
-    
+    // unused
     pub fn fetch(instruction:Instruction) -> Result<(), Box<dyn Error>>{
         match instruction.reg_mode.as_str() {
             "Register_Direct" => {
@@ -715,11 +735,7 @@ mod tests{
 
     // all tests bellow are passing !
     #[test]
-    fn simple_prog() {
-        let mut core = Core::new();
-
-        // simple program: r0 <- 0x09, then store content of r0 at address 0x0B in memory
-        // read back the value at this address and put it into register r1
+    fn load_from_file() {
         let binary = String::from("_start\n\
             0x8190; ldi r0, 0x09\n\
             0xBB10; st  0x0B, r0\n\
@@ -727,11 +743,25 @@ mod tests{
             _end\n\
         ");
 
-        core.load_machine_code(binary); // store the program in the program memory
-        core.init_program(); // load the program instruction in instructions register
+        let program = fs::read_to_string("src/application/prog1.S").expect("Error");
 
+        assert_eq!(program, binary);
+    }
+    #[test]
+    fn simple_prog() {
+        let mut core = Core::new();
+
+        /* simple program: r0 <- 0x09, then store content of r0 at address 0x0B in memory
+         * read back the value at this address and put it into register r1
+        _start
+        0x8190; ldi r0, 0x09
+        0xBB10; st  0x0B, r0
+        0x92B0; lds  r1, 0x0B
+        _end
+        */
+        core.init_system(String::from("src/application/prog1.S"));
+        
         // program memory start at 0x04, so 0x04 and 0x05 will contain the istructions above
-
 
         // expected machine code: 1) 1000 (LDI) 0001 (r0)   1001 (0x09) 0000 (unused)
         //                        2) 1011 (ST)  1011 (0x0B) 0001 (r0)   0000 (unused)
@@ -758,21 +788,8 @@ mod tests{
 
 
         // now execute these instructions
-        // pc = 0 at the beginning : read instruction at address 0
-        let ins = core.fetch_instruction();
-        let ins_2 = core.decode_instruction(ins);
-        core.execute(ins_2);
-
-        core.pc += 1; // pc = 1, so the cpu read the 2nd instruction
-        let ins = core.fetch_instruction();
-        let ins_2 = core.decode_instruction(ins);
-        core.execute(ins_2);
-
-        core.pc += 1; // pc = 2, so the cpu read the 3rd instruction
-        let ins = core.fetch_instruction();
-        let ins_2 = core.decode_instruction(ins);
-        core.execute(ins_2);
-
+        let _nothing = core.run_program();
+        
         // simple program: r0 <- 0x09, then store content of r0 at address 0x0B in memory
         // we expect address 0x0B to contains 0x09
         core.dump_memory();
@@ -828,7 +845,6 @@ mod tests{
             0x3510; or r4, r0\n\
             _end\n\
         ");
-
         // populate the memory addresses
         core.load_machine_code(binary);
         core.dump_memory(); // and print it
