@@ -9,8 +9,8 @@ use std::fs;
 
 /*
  * 16 registers available
- * instruction coded in 16 bit
- * id: 0000 0000 0000 0000 0000 : instruction nop
+ * instruction coded in 16 bits
+ * id: 0000 0000 0000 0000 : instruction nop
 */
 pub struct Instruction{
     pub reg_mode: String,
