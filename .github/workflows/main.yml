@@ -34,9 +34,9 @@ jobs:
       - name: check bin size
         run: |
           if [ "${{ matrix.BUILD }}" == "--release" ]; then
-            ls -lht target/release/{alu}
+            ls -lht target/release/alu
           elif [ "${{ matrix.BUILD }}" == "" ]; then
-            ls -lht target/debug/{alu}
+            ls -lht target/debug/alu
           else
             echo any
           fi
